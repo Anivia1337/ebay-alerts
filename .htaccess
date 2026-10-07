@@ -10,3 +10,9 @@ DirectoryIndex index.php
   Header always set Referrer-Policy "no-referrer"
   Header always set Content-Security-Policy "default-src 'none'; style-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
 </IfModule>
+
+# Git-Repository und Repo-Dateien nicht ausliefern
+RedirectMatch 404 "/\.git(attributes|ignore)?(/|$)"
+<FilesMatch "^(README\.md|config\.example\.php)$">
+  Require all denied
+</FilesMatch>
