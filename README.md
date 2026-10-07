@@ -60,3 +60,7 @@ outside the CLI.
 | `data/config.php` | eBay keys + webhooks (not in the repo) |
 | `data/einstellungen.json` | Keywords and their sites, written by the page |
 | `data/gesehen.json` | Listing IDs already posted, per keyword/site |
+
+## License
+
+MIT, see `LICENSE`.

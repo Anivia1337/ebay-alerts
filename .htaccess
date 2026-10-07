@@ -13,6 +13,6 @@ DirectoryIndex index.php
 
 # Git-Repository und Repo-Dateien nicht ausliefern
 RedirectMatch 404 "/\.git(attributes|ignore)?(/|$)"
-<FilesMatch "^(README\.md|config\.example\.php)$">
+<FilesMatch "^(README\.md|LICENSE|config\.example\.php)$">
   Require all denied
 </FilesMatch>
