@@ -1,0 +1,4 @@
+# Zugangsdaten und Laufzeitdaten (Suchbegriffe, gesehene Angebote, Token) gehören nicht ins Repository.
+data/*
+!data/.htaccess
+!data/config.example.php
