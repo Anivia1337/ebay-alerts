@@ -3,7 +3,7 @@
 // Cron: * * * * * php /mnt/web/ebay/bot.php
 if (PHP_SAPI !== 'cli') { http_response_code(403); exit; }
 
-const DATEN = __DIR__ . '/data';
+defined('DATEN') || define('DATEN', __DIR__ . '/data'); // weitere Instanzen setzen ihren eigenen Ordner
 $cfg = require DATEN . '/config.php'; // Schlüssel + Webhook
 $cfg += json_decode((string) @file_get_contents(DATEN . '/einstellungen.json'), true) ?: ['suchbegriffe' => []]; // Begriff => Märkte, gepflegt über index.php
 
@@ -84,15 +84,15 @@ function titel(string $markt, array $i): string
     return mb_substr('[' . substr($markt, 5) . "][$art][$preis] " . $i['title'], 0, 256);
 }
 
-// Jede Minute nur MAX_ABFRAGEN Suchen (Gratis-Kontingent 5000/Tag), reihum über alle Begriff×Marktplatz-Paare.
-// Bei 4 Begriffen × 3 Märkten kommt jedes Paar also alle 4 Minuten dran.
-const MAX_ABFRAGEN = 3;
+// Jede Minute nur max_abfragen Suchen (Gratis-Kontingent 5000/Tag ≈ 3/Minute pro eBay-App), reihum über alle Begriff×Marktplatz-Paare.
+// Teilen sich mehrere Instanzen dieselben eBay-Schlüssel, muss die Summe ≤ 3 bleiben.
+$max = $cfg['max_abfragen'] ?? 3;
 $paare = [];
 foreach ($cfg['suchbegriffe'] as $b => $maerkte) foreach ($maerkte as $m) $paare[] = [$m, (string) $b];
 $gesehen = json_lesen(DATEN . '/gesehen.json');
 $zeiger = json_lesen(DATEN . '/zeiger.json')['n'] ?? 0;
 
-for ($k = 0; $k < min(MAX_ABFRAGEN, count($paare)); $k++) {
+for ($k = 0; $k < min($max, count($paare)); $k++) {
     [$markt, $begriff] = $paare[($zeiger + $k) % count($paare)];
     $schluessel = "$markt|$begriff";
     $treffer = suchen($cfg, $markt, $begriff);
@@ -121,4 +121,4 @@ for ($k = 0; $k < min(MAX_ABFRAGEN, count($paare)); $k++) {
     $gesehen[$schluessel] = array_slice(array_merge(array_column($neu, 'itemId'), $gesehen[$schluessel] ?? []), 0, 1000);
     json_schreiben(DATEN . '/gesehen.json', $gesehen);
 }
-json_schreiben(DATEN . '/zeiger.json', ['n' => ($zeiger + MAX_ABFRAGEN) % max(1, count($paare))]);
+json_schreiben(DATEN . '/zeiger.json', ['n' => ($zeiger + $max) % max(1, count($paare))]);

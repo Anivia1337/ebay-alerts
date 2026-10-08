@@ -23,7 +23,7 @@ Suchbegriff: apple keyboard
   there, so the channel isn't flooded with old listings.
 - The free API quota is 5000 calls a day, so the bot does **3 searches per
   minute**, cycling through all keyword/site pairs. With 6 pairs, each one is
-  checked every 2 minutes. Raise `MAX_ABFRAGEN` in `bot.php` if eBay grants
+  checked every 2 minutes. Set `max_abfragen` in `data/config.php` if eBay grants
   you more.
 - `index.php` is a small page to add/remove keywords and pick their sites.
   It has no login: anyone with the URL can edit the keywords.

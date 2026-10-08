@@ -1,7 +1,10 @@
 <?php
 // Mini-Oberfläche für den eBay-Bot: Suchbegriffe mit je eigenen Marktplätzen pflegen.
 // Speichert nach data/einstellungen.json, das bot.php jede Minute liest.
-const EINSTELLUNGEN = __DIR__ . '/data/einstellungen.json';
+// Weitere Instanzen (z. B. /luna) setzen DATEN auf ihren eigenen Ordner und binden diese Datei ein
+defined('DATEN') || define('DATEN', __DIR__ . '/data');
+define('EINSTELLUNGEN', DATEN . '/einstellungen.json');
+$basis = '/' . basename(dirname(DATEN));
 const MAERKTE = [
     'EBAY_DE' => 'Germany', 'EBAY_CH' => 'Switzerland', 'EBAY_AT' => 'Austria', 'EBAY_FR' => 'France',
     'EBAY_IT' => 'Italy', 'EBAY_ES' => 'Spain', 'EBAY_NL' => 'Netherlands', 'EBAY_PL' => 'Poland',
@@ -31,16 +34,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['weg'])) unset($e['suchbegriffe'][(string) $_POST['weg']]);
     file_put_contents(EINSTELLUNGEN . '.tmp', json_encode($e, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
     rename(EINSTELLUNGEN . '.tmp', EINSTELLUNGEN);
-    header('Location: /ebay', true, 303);
+    header("Location: $basis", true, 303);
     exit;
 }
 
 $h = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES);
-$cfg = require __DIR__ . '/data/config.php';
+$cfg = require DATEN . '/config.php';
 $bereit = $cfg['ebay_client_id'] !== '' && $cfg['ebay_client_secret'] !== '' && array_filter($cfg['discord_webhooks']);
 $paare = array_sum(array_map('count', $e['suchbegriffe']));
-$takt = max(1, (int) ceil($paare / 3)); // bot.php: MAX_ABFRAGEN = 3 pro Minute
-$letzter = @filemtime(__DIR__ . '/data/zeiger.json');
+$takt = max(1, (int) ceil($paare / ($cfg['max_abfragen'] ?? 3))); // wie bot.php
+$letzter = @filemtime(DATEN . '/zeiger.json');
 ?>
 <!doctype html>
 <html lang="en">
