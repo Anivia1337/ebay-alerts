@@ -8,6 +8,7 @@ const MAERKTE = [
     'EBAY_GB' => 'United Kingdom', 'EBAY_US' => 'United States', 'EBAY_CA' => 'Canada', 'EBAY_AU' => 'Australia',
 ];
 const MAX_BEGRIFFE = 30;
+date_default_timezone_set('Europe/Zurich'); // Server läuft auf UTC
 
 // Format: {"suchbegriffe": {"begriff": ["EBAY_DE", ...]}} – jeder Begriff mit eigenen Märkten
 $e = json_decode((string) @file_get_contents(EINSTELLUNGEN), true) ?: [];
