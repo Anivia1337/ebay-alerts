@@ -81,6 +81,7 @@ $letzter = @filemtime(DATEN . '/zeiger.json');
         <button class="knopf zweit" name="gruppe" value="alle">Add for all sites</button>
       </div>
     </form>
+    <p class="hinweis">Every word must appear in the title, but translations and synonyms count too (keyboard = Tastatur = clavier, wireless = kabellos = bluetooth …). Use <code>|</code> for your own alternatives, e.g. <code>keychron|aula</code>.</p>
     <p class="hinweis">Adding a keyword that already exists replaces its sites. eBay allows about 3 searches per minute, so every extra keyword × site makes each check less frequent.</p>
   </section>
 

@@ -3,6 +3,43 @@
 // Cron: * * * * * php /mnt/web/ebay/bot.php
 if (PHP_SAPI !== 'cli') { http_response_code(403); exit; }
 
+// Wörter, die im Titel gleichwertig zählen (Kleinschreibung, Wortteil genügt: "mechanisch" passt auf "mechanische").
+// ponytail: feste Liste, bei Bedarf ergänzen – für Unvorhergesehenes "a|b" im Suchbegriff
+const SYNONYME = [
+    ['tastatur', 'keyboard', 'clavier', 'tastiera', 'teclado', 'toetsenbord', 'klawiatura'],
+    ['mechanisch', 'mechanical', 'mécanique', 'mecanique', 'meccanica', 'mecánic', 'mecanic', 'mechaniczn',
+        'hot-swap', 'hotswap', 'gasket', 'hall effect', 'cherry mx', 'gateron', 'kailh', 'reaper switch'], // typische Merkmale mechanischer Tastaturen
+    ['wireless', 'kabellos', 'bluetooth', '2.4ghz', '2,4ghz', '2.4 ghz', '2,4 ghz', 'sans fil', 'senza fili', 'inalámbric', 'inalambric', 'draadloos', 'bezprzewodow', 'funktastatur', 'funkmaus'],
+    ['maus', 'mouse', 'souris', 'mysz'],
+    ['kopfhörer', 'kopfhoerer', 'headphone', 'headset', 'casque', 'cuffie', 'auriculares'],
+    ['tastenkappen', 'keycaps', 'keycap'],
+    ['schalter', 'switches', 'switch'],
+];
+
+// Passt der Titel? Jedes Wort des Suchbegriffs (oder eine Alternative/ein Synonym davon) muss vorkommen.
+function passt(string $begriff, string $titel): bool
+{
+    $titel = mb_strtolower($titel);
+    foreach (preg_split('/\s+/', mb_strtolower(trim($begriff))) as $wort) {
+        $varianten = explode('|', $wort);
+        foreach (SYNONYME as $gruppe) if (array_intersect($varianten, $gruppe)) $varianten = array_merge($varianten, $gruppe);
+        if (!array_filter($varianten, fn($v) => $v !== '' && str_contains($titel, $v))) return false;
+    }
+    return true;
+}
+
+// php bot.php test – Selbsttest des Titelfilters
+if (($argv[1] ?? '') === 'test') {
+    assert(passt('tastatur mechanisch wireless', 'Logitech G915 Wireless mechanische Gaming-Tastatur'));
+    assert(passt('tastatur mechanisch wireless', 'Cherry KW X ULP ultraflache mechanische Tastatur kabellos'));
+    assert(passt('tastatur mechanisch wireless', 'Aula F75 Wireless Mechanical Keyboard, Cedar Green'));
+    assert(!passt('cherry mx', 'Mens Sweatshirt Heavy Blend 100% Plain Jumper'));
+    assert(passt('keychron|aula f75', 'AULA F75 Max Wireless Gaming'));
+    assert(!passt('keychron|aula k8', 'AULA F75 Max Wireless Gaming'));
+    assert(passt('tastatur mechanisch wireless', 'AULA F75 Wireless Gaming Tastatur Gasket Reaper Switches'));
+    exit("ok\n");
+}
+
 defined('DATEN') || define('DATEN', __DIR__ . '/data'); // weitere Instanzen setzen ihren eigenen Ordner
 $cfg = require DATEN . '/config.php'; // Schlüssel + Webhook
 $cfg += json_decode((string) @file_get_contents(DATEN . '/einstellungen.json'), true) ?: ['suchbegriffe' => []]; // Begriff => Märkte, gepflegt über index.php
@@ -100,9 +137,8 @@ for ($k = 0; $k < min($max, count($paare)); $k++) {
     $erster_lauf = !isset($gesehen[$schluessel]);
     // Über alle Paare: dasselbe Angebot erscheint oft auf mehreren eBay-Seiten
     $alt = array_flip(array_merge([], ...array_values($gesehen)));
-    // eBay findet auch über Varianten/Merkmale (Farbe "Cherry" …) – nur Treffer mit allen Wörtern im Titel
-    $woerter = preg_split('/\s+/', mb_strtolower($begriff));
-    $treffer = array_filter($treffer, fn($i) => !array_filter($woerter, fn($w) => !str_contains(mb_strtolower($i['title']), $w)));
+    // eBay findet auch über Varianten/Merkmale (Farbe "Cherry" …) – nur Treffer, deren Titel passt
+    $treffer = array_filter($treffer, fn($i) => passt($begriff, $i['title']));
     $neu = array_values(array_filter($treffer, fn($i) => !isset($alt[$i['itemId']])));
     if (!$neu && !$erster_lauf) continue;
 
