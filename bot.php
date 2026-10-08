@@ -91,10 +91,35 @@ function token(array $cfg): string
 function suchen(array $cfg, string $markt, string $begriff): ?array
 {
     [$code, $d] = http('GET', 'https://api.ebay.com/buy/browse/v1/item_summary/search?' . http_build_query([
-        'q' => $begriff, 'sort' => 'newlyListed', 'limit' => 50,
+        // "a|b" ist bei eBay "(a,b)"
+        'q' => preg_replace_callback('/\S*\|\S*/', fn($m) => '(' . str_replace('|', ',', $m[0]) . ')', $begriff),
+        'sort' => 'newlyListed', 'limit' => 50,
     ]), ['Authorization: Bearer ' . token($cfg), "X-EBAY-C-MARKETPLACE-ID: $markt"]);
     if ($code !== 200) { fwrite(STDERR, "Suche '$begriff' auf $markt: HTTP $code\n"); return null; }
     return $d['itemSummaries'] ?? [];
+}
+
+// Beschreibung eines Angebots (1 API-Aufruf). Gedeckelt pro Tag, damit das Kontingent für die Suchen reicht:
+// 3 Suchen/Minute ≈ 4320 der 5000 Aufrufe → Rest für Beschreibungen, auf alle Instanzen mit denselben Schlüsseln verteilt.
+function beschreibung(array $cfg, string $markt, string $id, string $titel): string
+{
+    $z = json_lesen(DATEN . '/zaehler.json');
+    if (($z['tag'] ?? '') !== gmdate('Y-m-d')) $z = ['tag' => gmdate('Y-m-d'), 'n' => 0];
+    if ($z['n'] >= ($cfg['max_beschreibungen'] ?? 300)) return '';
+    $z['n']++;
+    json_schreiben(DATEN . '/zaehler.json', $z);
+
+    [$code, $d] = http('GET', 'https://api.ebay.com/buy/browse/v1/item/' . rawurlencode($id),
+        ['Authorization: Bearer ' . token($cfg), "X-EBAY-C-MARKETPLACE-ID: $markt"]);
+    if ($code !== 200) return '';
+    $text = $d['shortDescription'] ?? '';
+    if ($text === '') { // sonst aus der HTML-Beschreibung
+        $html = preg_replace('#<(script|style)\b.*?</\1>#is', ' ', $d['description'] ?? '');
+        $text = html_entity_decode(strip_tags(str_replace(['<br', '</p>', '</div>'], [' <br', ' </p>', ' </div>'], $html)), ENT_QUOTES | ENT_HTML5);
+    }
+    $text = trim(preg_replace('/\s+/u', ' ', $text));
+    if (mb_strtolower($text) === mb_strtolower(trim($titel))) return ''; // manche Verkäufer wiederholen nur den Titel
+    return mb_strlen($text) > 300 ? rtrim(mb_substr($text, 0, 300)) . ' …' : $text;
 }
 
 function posten(string $webhook, array $embeds): void
@@ -146,6 +171,7 @@ for ($k = 0; $k < min($max, count($paare)); $k++) {
     if (!$erster_lauf) {
         $embeds = array_map(fn($i) => [
             'title' => titel($markt, $i),
+            'description' => trim(($i['condition'] ?? '') . "\n" . beschreibung($cfg, $markt, $i['itemId'], $i['title'])),
             'url' => strtok($i['itemWebUrl'], '?'), // ohne Tracking-Parameter
             'image' => ['url' => $i['image']['imageUrl'] ?? ''],
             'footer' => ['text' => "Suchbegriff: $begriff"],

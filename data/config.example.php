@@ -9,5 +9,9 @@ return [
     'discord_webhooks' => [
         'https://discord.com/api/webhooks/…',
     ],
+    // Suchen pro Minute (eBay-Limit ≈ 3 pro Schlüssel, bei mehreren Instanzen aufteilen)
+    'max_abfragen' => 3,
+    // Beschreibungen pro Tag (1 Abruf je Angebot, darüber ohne Beschreibung)
+    'max_beschreibungen' => 600,
     // Suchbegriffe und Marktplätze: über die Seite (data/einstellungen.json)
 ];
