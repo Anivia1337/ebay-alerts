@@ -100,6 +100,9 @@ for ($k = 0; $k < min(MAX_ABFRAGEN, count($paare)); $k++) {
     $erster_lauf = !isset($gesehen[$schluessel]);
     // Über alle Paare: dasselbe Angebot erscheint oft auf mehreren eBay-Seiten
     $alt = array_flip(array_merge([], ...array_values($gesehen)));
+    // eBay findet auch über Varianten/Merkmale (Farbe "Cherry" …) – nur Treffer mit allen Wörtern im Titel
+    $woerter = preg_split('/\s+/', mb_strtolower($begriff));
+    $treffer = array_filter($treffer, fn($i) => !array_filter($woerter, fn($w) => !str_contains(mb_strtolower($i['title']), $w)));
     $neu = array_values(array_filter($treffer, fn($i) => !isset($alt[$i['itemId']])));
     if (!$neu && !$erster_lauf) continue;
 
