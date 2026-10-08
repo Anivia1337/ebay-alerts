@@ -17,10 +17,10 @@ function http(string $methode, string $url, array $kopf = [], ?string $body = nu
     curl_setopt_array($c, [
         CURLOPT_CUSTOMREQUEST => $methode,
         CURLOPT_HTTPHEADER => $kopf,
-        CURLOPT_POSTFIELDS => $body,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT => 20,
     ]);
+    if ($body !== null) curl_setopt($c, CURLOPT_POSTFIELDS, $body); // leerer Body bei GET → eBay antwortet 415
     $antwort = (string) curl_exec($c);
     $code = curl_getinfo($c, CURLINFO_HTTP_CODE);
     return [$code, json_decode($antwort, true)];
@@ -98,7 +98,8 @@ for ($k = 0; $k < min(MAX_ABFRAGEN, count($paare)); $k++) {
     $treffer = suchen($cfg, $markt, $begriff);
     if ($treffer === null) continue;
     $erster_lauf = !isset($gesehen[$schluessel]);
-    $alt = array_flip($gesehen[$schluessel] ?? []);
+    // Über alle Paare: dasselbe Angebot erscheint oft auf mehreren eBay-Seiten
+    $alt = array_flip(array_merge([], ...array_values($gesehen)));
     $neu = array_values(array_filter($treffer, fn($i) => !isset($alt[$i['itemId']])));
     if (!$neu && !$erster_lauf) continue;
 
@@ -106,7 +107,7 @@ for ($k = 0; $k < min(MAX_ABFRAGEN, count($paare)); $k++) {
     if (!$erster_lauf) {
         $embeds = array_map(fn($i) => [
             'title' => titel($markt, $i),
-            'url' => $i['itemWebUrl'],
+            'url' => strtok($i['itemWebUrl'], '?'), // ohne Tracking-Parameter
             'image' => ['url' => $i['image']['imageUrl'] ?? ''],
             'footer' => ['text' => "Suchbegriff: $begriff"],
             'color' => 0x0064D2,
