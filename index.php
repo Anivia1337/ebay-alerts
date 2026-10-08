@@ -8,6 +8,10 @@ const MAERKTE = [
     'EBAY_GB' => 'United Kingdom', 'EBAY_US' => 'United States', 'EBAY_CA' => 'Canada', 'EBAY_AU' => 'Australia',
 ];
 const MAX_BEGRIFFE = 30;
+const GRUPPEN = [
+    'europa' => ['EBAY_DE', 'EBAY_CH', 'EBAY_AT', 'EBAY_FR', 'EBAY_IT', 'EBAY_ES', 'EBAY_NL', 'EBAY_PL', 'EBAY_GB'],
+    'alle' => null, // alle aus MAERKTE
+];
 date_default_timezone_set('Europe/Zurich'); // Server läuft auf UTC
 
 // Format: {"suchbegriffe": {"begriff": ["EBAY_DE", ...]}} – jeder Begriff mit eigenen Märkten
@@ -16,7 +20,9 @@ $e['suchbegriffe'] ??= [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $begriff = trim(preg_replace('/\s+/', ' ', (string) ($_POST['neu'] ?? '')));
-    $maerkte = array_values(array_intersect(array_keys(MAERKTE), (array) ($_POST['maerkte'] ?? [])));
+    $gruppe = (string) ($_POST['gruppe'] ?? '');
+    $auswahl = array_key_exists($gruppe, GRUPPEN) ? (GRUPPEN[$gruppe] ?? array_keys(MAERKTE)) : (array) ($_POST['maerkte'] ?? []);
+    $maerkte = array_values(array_intersect(array_keys(MAERKTE), $auswahl));
     if ($begriff !== '' && mb_strlen($begriff) <= 80 && $maerkte) {
         // Gleicher Begriff nochmal = Märkte ändern (Gross/Klein egal)
         foreach (array_keys($e['suchbegriffe']) as $b) if (mb_strtolower($b) === mb_strtolower($begriff)) $begriff = $b;
@@ -66,7 +72,11 @@ $letzter = @filemtime(__DIR__ . '/data/zeiger.json');
         <label><input type="checkbox" name="maerkte[]" value="<?= $id ?>"> <?= $h($name) ?></label>
         <?php endforeach ?>
       </fieldset>
-      <button class="knopf">Add</button>
+      <div class="knoepfe">
+        <button class="knopf">Add</button>
+        <button class="knopf zweit" name="gruppe" value="europa">Add for all of Europe</button>
+        <button class="knopf zweit" name="gruppe" value="alle">Add for all sites</button>
+      </div>
     </form>
     <p class="hinweis">Adding a keyword that already exists replaces its sites. eBay allows about 3 searches per minute, so every extra keyword × site makes each check less frequent.</p>
   </section>
